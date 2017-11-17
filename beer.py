@@ -72,6 +72,10 @@ K_N0 = np.exp(-26.78)
 Kp_G0 = np.exp(23.33)
 Kp_M0 = np.exp(55.61)
 
+# empirical yeast growth inhibition constant
+# [mol / m^3]
+K_X = 3.65E5
+
 """
     Initial conditions
 """
@@ -124,12 +128,12 @@ def func(x, t):
     dM = -mu_2 * X
     dN = -mu_3 * X
     dE = -(Y_EG * dG + Y_EM * dM + Y_EN * dN)
-    dX = -(Y_XG * dG + Y_XM * dM + Y_XN * dN)
+    dX = -(Y_XG * dG + Y_XM * dM + Y_XN * dN) * (K_X / (K_X + (X - X0)**2))
     dT = (1 / (rho * Cp)) * ((H_FG * dG + H_FM * dM + H_FN * dN) - u * (T - Tc))
 
     return [dE, dX, dG, dM, dN, dT]
 
-t = np.linspace(0, 150)
+t = np.linspace(0, 800)
 inits = [E0, X0, G0, M0, N0, T0]
 sol = odeint(func, inits, t)
 
@@ -145,17 +149,21 @@ ax3 = fig.add_subplot(gs[1, 0])
 ax4 = fig.add_subplot(gs[1, 1])
 
 ax1.plot(t, sol[:, 1], color='black')
-ax1.set_ylabel('Yeast Concentration [mol / m^3]')
+ax1.set_title('Yeast')
+ax1.set_ylabel('Concentration [mol / m^3]')
 
 ax2.plot(t, sol[:, -1] - 273.15, color='r')
-ax2.set_ylabel('Temperature [deg C]')
+ax2.set_title('Temperature')
+ax2.set_ylabel('deg C')
 
 ax3.plot(t, sol[:, 2:-1])
+ax3.set_title('Sugars')
 ax3.legend(['Glucose', 'Maltose', 'Maltotriose'])
 ax3.set_ylabel('Concentration [mol / m^3]')
 
 ax4.plot(t, map(abv, sol[:, 0]), color='purple')
-ax4.set_ylabel('Ethanol [% ABV]')
+ax4.set_title('Ethanol')
+ax4.set_ylabel('% ABV')
 ax4.set_xlabel('Time [hr]')
 
 fig.show()
