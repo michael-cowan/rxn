@@ -86,7 +86,7 @@ N0 = 40.
 # temperature
 # [K]
 T0 = 10.5 + 273.15
-T0 = 8 + 273.15
+#T0 = 8 + 273.15
 
 def arrhenius(prek, ea, temp):
     return prek * np.exp(-ea / (1.987E-3 * temp))
@@ -136,7 +136,7 @@ sol = odeint(func, inits, t)
 def abv(e):
     return (100 * e * 46.068) / 789E3
 
-fig = plt.figure()
+fig = plt.figure(figsize=(15,9))
 plt.suptitle('Fermentation in a Batch Reactor')
 gs = GridSpec(2, 2)
 ax1 = fig.add_subplot(gs[0, 0])
@@ -144,17 +144,17 @@ ax2 = fig.add_subplot(gs[0, 1])
 ax3 = fig.add_subplot(gs[1, 0])
 ax4 = fig.add_subplot(gs[1, 1])
 
-ax1.plot(t, sol[:, 1])
+ax1.plot(t, sol[:, 1], color='black')
 ax1.set_ylabel('Yeast Concentration [mol / m^3]')
 
-ax2.plot(t, sol[:, -1] - 273.15)
+ax2.plot(t, sol[:, -1] - 273.15, color='r')
 ax2.set_ylabel('Temperature [deg C]')
 
 ax3.plot(t, sol[:, 2:-1])
 ax3.legend(['Glucose', 'Maltose', 'Maltotriose'])
 ax3.set_ylabel('Concentration [mol / m^3]')
 
-ax4.plot(t, map(abv, sol[:, 0]))
+ax4.plot(t, map(abv, sol[:, 0]), color='purple')
 ax4.set_ylabel('Ethanol [% ABV]')
 ax4.set_xlabel('Time [hr]')
 
