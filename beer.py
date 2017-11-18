@@ -117,6 +117,24 @@ Y_EA_S = 7.520E-4
 Y_EC_X = 1.260E-4
 Y_IAc = 2.918E-2
 
+# vicinal diketones
+# diacetyl (butanedione) & 2,3-pentanedione grouped into one: VDK
+
+# yield coefficient
+Y_VDK = 6.730E-5
+
+# effective first-order rate constant
+# [m^3 / (mol hr)]
+k_VDK = 1.818E-5
+
+# acetaldehyde
+
+# yield coefficient
+Y_AAI = 3.889E-3
+
+# effective first-order rate constant
+# [m^3 / (mol hr)]
+k_AAI = 3.914E-5
 
 """
     Initial conditions
@@ -125,9 +143,9 @@ Y_IAc = 2.918E-2
 # [mol / m^3]
 E0 = 0.
 X0 = 125.
-G0 = 70.
+G0 = 125.
 M0 = 220.
-N0 = 40.
+N0 = 50.
 CL0 = 0.
 CG0 = 0.
 L0 = 1.25
@@ -140,10 +158,13 @@ P0 = 0.
 EA0 = 0.
 EC0 = 0.
 IAc0 = 0.
+VDK0 = 0.
+AAI0 = 0.
 
 # temperature
 # [K]
-T0 = 10.5 + 273.15
+#T0 = 10.5 + 273.15
+T0 = 20. + 273.15
 
 """
     Useful functions
@@ -160,7 +181,7 @@ def abv(e):
 """
 
 def func(x, t, isothermal=False):
-    E, X, G, M, N, CL, CG, L, I, V, IB, IA, MB, P, EA, EC, IAc, T = x
+    E, X, G, M, N, CL, CG, L, I, V, IB, IA, MB, P, EA, EC, IAc, VDK, AAI, T = x
 
     # Michaelis-Menten constants
     # p: inhibition constants
@@ -236,6 +257,12 @@ def func(x, t, isothermal=False):
     dEC = Y_EC_X * mu_x * X
     dIAc = Y_IAc * dIA
 
+    # vicinal diketones
+    dVDK = Y_VDK * mu_x * X - k_VDK * VDK * X
+
+    # acetaldehyde
+    dAAI = Y_AAI * (mu_1 + mu_2 + mu_3) * X - k_AAI * AAI * X
+
     # temperature
     # in case isothermal is selected
     if isothermal:
@@ -243,16 +270,18 @@ def func(x, t, isothermal=False):
     else:
         dT = (1 / (rho * Cp)) * ((H_FG * dG + H_FM * dM + H_FN * dN) - u * (T - Tc))
 
-    return [dE, dX, dG, dM, dN, dCL, dCG, dL, dI, dV, dIB, dIA, dMB, dP, dEA, dEC, dIAc, dT]
+    return [dE, dX, dG, dM, dN, dCL, dCG, dL, dI, dV, dIB, dIA, dMB, dP, dEA, dEC, dIAc, dVDK, dAAI, dT]
 
 """
     Solution and data vis
 """
 
-def main(tmax=200, isothermal=False):
-    t = np.linspace(0, tmax)
-    inits = [E0, X0, G0, M0, N0, CL0, CG0, L0, I0, V0, IB0, IA0, MB0, P0, EA0, EC0, IAc0, T0]
-    sol = odeint(func, inits, t, args=(isothermal,))
+def main(tmax=120, isothermal=True):
+    thr = np.linspace(0, tmax)
+    inits = [E0, X0, G0, M0, N0, CL0, CG0, L0, I0, V0, IB0, IA0, MB0, P0, EA0, EC0, IAc0, VDK0, AAI0, T0]
+    sol = odeint(func, inits, thr, args=(isothermal,))
+    
+    t = thr / 24.
 
     fig = plt.figure(figsize=(15,9))
     #plt.suptitle('Fermentation in a Batch Reactor')
@@ -263,43 +292,61 @@ def main(tmax=200, isothermal=False):
     ax4 = fig.add_subplot(gs[1, 0])
     ax5 = fig.add_subplot(gs[1, 1])
     ax6 = fig.add_subplot(gs[1, 2])
-    axf = fig.add_subplot(gs[2, :])
+    ax7 = fig.add_subplot(gs[2, 0])
+    ax8 = fig.add_subplot(gs[2, 1])
+    axf = fig.add_subplot(gs[2, 2])
 
     ax1.plot(t, sol[:, 5:7])
     ax1.set_title('CO2')
     ax1.legend(['Gas', 'Aqueous'])
+    ax1.set_xlabel('Time (day)')
     ax1.set_ylabel('Concentration [mol / m^3]')
 
-    ax2.plot(t, sol[:, -1] - 273.15, color='r')
-    ax2.set_title('Temperature')
-    ax2.set_ylabel('deg C')
+    ax2.plot(t, sol[:, 1] - 273.15, color='r')
+    ax2.set_title('Yeast')
+    ax2.set_xlabel('Time (day)')
+    ax2.set_ylabel('Concentration [mol / m^3]')
 
-    ax3.plot(t, sol[:, 1:5])
-    ax3.set_title('Yeast & Sugars')
+    ax3.plot(t, sol[:, 2:5])
+    ax3.set_title('Sugars')
     ax3.legend(['Yeast', 'Glucose', 'Maltose', 'Maltotriose'])
+    ax3.set_xlabel('Time (day)')
     ax3.set_ylabel('Concentration [mol / m^3]')
     
     ax4.plot(t, sol[:, 7:10])
     ax4.set_title('Amino Acids')
     ax4.legend(['Leucine', 'Isoleucine', 'Valine'])
+    ax4.set_xlabel('Time (day)')
     ax4.set_ylabel('Concentration [mol / m^3]')
 
     ax5.plot(t, sol[:, 10:14])
     ax5.set_title('Fusel Alcohols')
     ax5.legend(['Isobutyl Alcohol', 'Isoamyl Alcohol', '2-methyl-1-butanol', 'n-propanol'])
+    ax5.set_xlabel('Time (day)')
     ax5.set_ylabel('Concentration [mol / m^3')
     
     ax6.plot(t, sol[:, 14:17])
     ax6.set_title('Esters')
     ax6.legend(['Ethyl Acetate', 'Ethyl Caproate', 'Isoamyl Acetate'])
+    ax6.set_xlabel('Time (day)')
     ax6.set_ylabel('Concentration [mol / m^3]')
 
-    axf.plot(t, map(abv, sol[:, 0]), color='purple')
-    axf.set_title('Ethanol')
-    axf.set_ylabel('% ABV')
-    axf.set_xlabel('Time [hr]')
+    ax7.plot(t, sol[:, 17], color='black')
+    ax7.set_title('Vicinal Diketones (VDKs)')
+    ax7.set_xlabel('Time (day)')
+    ax7.set_ylabel('Concentration [mol / m^3]')
+    
+    ax8.plot(t, sol[:, 18], color='c')
+    ax8.set_title('Acetaldehyde')
+    ax8.set_xlabel('Time (day)')
+    ax8.set_ylabel('Concentration [mol / m^3]')
 
-    fig.tight_layout()
+    axf.plot(t, map(abv, sol[:, 0]), color='m')
+    axf.set_title('Ethanol')
+    axf.set_xlabel('Time (day)')
+    axf.set_ylabel('% ABV')
+
+    fig.tight_layout(rect=[0, 0, 1, 0.95])
     fig.show()
     if __name__ == '__main__':
         return sol, fig
