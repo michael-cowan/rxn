@@ -86,7 +86,7 @@ K_GL = 0.07
 
 # amino acide 
 
-#yield coefficient
+# yield coefficient
 # Yij = [mol j / mol i]
 Y_LX = 0.07734
 Y_IX = 0.02172
@@ -101,6 +101,22 @@ K_V = 0.02769
 # first-order delay time constant
 # [1]
 tau_d = 23.54
+
+# fusel alcohols
+
+# yield coefficient
+Y_IB_E = 0.1607
+Y_IA_E = 0.5128
+Y_MB_E = 0.3840
+Y_P_E = 0.2216
+
+# esters
+
+# yield coefficient
+Y_EA_S = 7.520E-4
+Y_EC_X = 1.260E-4
+Y_IAc = 2.918E-2
+
 
 """
     Initial conditions
@@ -117,6 +133,13 @@ CG0 = 0.
 L0 = 1.25
 I0 = 0.6
 V0 = 1.0
+IB0 = 0.008
+IA0 = 0.008
+MB0 = 0.
+P0 = 0.
+EA0 = 0.
+EC0 = 0.
+IAc0 = 0.
 
 # temperature
 # [K]
@@ -136,14 +159,8 @@ def abv(e):
     ODE setup
 """
 
-def func(x, t, isothermal=True):
-    E, X, G, M, N, CL, CG, L, I, V, T = x
-
-    # CO2 saturation concentrations
-    # polynomial fit of CO2 solubility data as f(T) [R2 = 0.9955]
-    # https://www.engineeringtoolbox.com/gases-solubility-water-d_1148.html
-    # [mol / m^3]
-    C_sat = np.poly1d([0.0194, -12.829, 2135.8])(T)
+def func(x, t, isothermal=False):
+    E, X, G, M, N, CL, CG, L, I, V, IB, IA, MB, P, EA, EC, IAc, T = x
 
     # Michaelis-Menten constants
     # p: inhibition constants
@@ -169,6 +186,15 @@ def func(x, t, isothermal=True):
     mu_2 = ((mu_M * M) / (K_M + M)) * gluc_in
     mu_3 = ((mu_N * N) / (K_N + N)) * gluc_in * (Kp_M / (Kp_M + M))
 
+    # feedback inhibition mechanism for cell growth
+    mu_x = (Y_XG * mu_1 + Y_XM * mu_2 + Y_XN * mu_3) * (K_X / (K_X + (X - X0)**2))
+
+    # CO2 saturation concentrations
+    # polynomial fit of CO2 solubility data as f(T) [R2 = 0.9955]
+    # https://www.engineeringtoolbox.com/gases-solubility-water-d_1148.html
+    # [mol / m^3]
+    C_sat = np.poly1d([0.0194, -12.829, 2135.8])(T)
+
     # amino acid delay time
     D = 1 - np.exp(-t / tau_d)
 
@@ -183,12 +209,7 @@ def func(x, t, isothermal=True):
     dE = -(Y_EG * dG + Y_EM * dM + Y_EN * dN)
     
     # yeast
-    dX = -(Y_XG * dG + Y_XM * dM + Y_XN * dN) * (K_X / (K_X + (X - X0)**2))
-    
-    # amino acids
-    dL = -Y_LX * dX * (L / (K_L + L)) * D
-    dI = -Y_IX * dX * (I / (K_I + I)) * D
-    dV = -Y_VX * dX * (V / (K_V + V)) * D
+    dX = mu_x * X
 
     # aqueous CO2
     if CL >= C_sat:
@@ -198,32 +219,51 @@ def func(x, t, isothermal=True):
 
     # gas CO2
     dCG = X * (Y_CG * mu_1 + Y_CM * mu_2 + Y_CN * mu_3) - dCL
+    
+    # amino acids
+    dL = -Y_LX * dX * (L / (K_L + L)) * D
+    dI = -Y_IX * dX * (I / (K_I + I)) * D
+    dV = -Y_VX * dX * (V / (K_V + V)) * D
 
+    # fusel alcohols
+    dIB = -Y_IB_E * dV
+    dIA = -Y_IA_E * dL
+    dMB = -Y_MB_E * dI
+    dP = -Y_P_E * (dV + dI)
+
+    # esters
+    dEA = Y_EA_S * -(dG + dM + dN)
+    dEC = Y_EC_X * mu_x * X
+    dIAc = Y_IAc * dIA
+
+    # temperature
     # in case isothermal is selected
     if isothermal:
         dT = 0
     else:
         dT = (1 / (rho * Cp)) * ((H_FG * dG + H_FM * dM + H_FN * dN) - u * (T - Tc))
 
-    return [dE, dX, dG, dM, dN, dCL, dCG, dL, dI, dV, dT]
+    return [dE, dX, dG, dM, dN, dCL, dCG, dL, dI, dV, dIB, dIA, dMB, dP, dEA, dEC, dIAc, dT]
 
 """
     Solution and data vis
 """
 
-def main(tmax=120, isothermal=True):
+def main(tmax=200, isothermal=False):
     t = np.linspace(0, tmax)
-    inits = [E0, X0, G0, M0, N0, CL0, CG0, L0, I0, V0, T0]
+    inits = [E0, X0, G0, M0, N0, CL0, CG0, L0, I0, V0, IB0, IA0, MB0, P0, EA0, EC0, IAc0, T0]
     sol = odeint(func, inits, t, args=(isothermal,))
 
     fig = plt.figure(figsize=(15,9))
-    plt.suptitle('Fermentation in a Batch Reactor')
-    gs = GridSpec(3, 2)
+    #plt.suptitle('Fermentation in a Batch Reactor')
+    gs = GridSpec(3, 3)
     ax1 = fig.add_subplot(gs[0, 0])
     ax2 = fig.add_subplot(gs[0, 1])
-    ax3 = fig.add_subplot(gs[1, 0])
-    ax4 = fig.add_subplot(gs[1, 1])
-    ax5 = fig.add_subplot(gs[2, :])
+    ax3 = fig.add_subplot(gs[0, 2])
+    ax4 = fig.add_subplot(gs[1, 0])
+    ax5 = fig.add_subplot(gs[1, 1])
+    ax6 = fig.add_subplot(gs[1, 2])
+    axf = fig.add_subplot(gs[2, :])
 
     ax1.plot(t, sol[:, 5:7])
     ax1.set_title('CO2')
@@ -242,14 +282,27 @@ def main(tmax=120, isothermal=True):
     ax4.plot(t, sol[:, 7:10])
     ax4.set_title('Amino Acids')
     ax4.legend(['Leucine', 'Isoleucine', 'Valine'])
-    ax3.set_ylabel('Concentration [mol / m^3]')
+    ax4.set_ylabel('Concentration [mol / m^3]')
 
-    ax5.plot(t, map(abv, sol[:, 0]), color='purple')
-    ax5.set_title('Ethanol')
-    ax5.set_ylabel('% ABV')
-    ax5.set_xlabel('Time [hr]')
+    ax5.plot(t, sol[:, 10:14])
+    ax5.set_title('Fusel Alcohols')
+    ax5.legend(['Isobutyl Alcohol', 'Isoamyl Alcohol', '2-methyl-1-butanol', 'n-propanol'])
+    ax5.set_ylabel('Concentration [mol / m^3')
+    
+    ax6.plot(t, sol[:, 14:17])
+    ax6.set_title('Esters')
+    ax6.legend(['Ethyl Acetate', 'Ethyl Caproate', 'Isoamyl Acetate'])
+    ax6.set_ylabel('Concentration [mol / m^3]')
 
+    axf.plot(t, map(abv, sol[:, 0]), color='purple')
+    axf.set_title('Ethanol')
+    axf.set_ylabel('% ABV')
+    axf.set_xlabel('Time [hr]')
+
+    fig.tight_layout()
     fig.show()
+    if __name__ == '__main__':
+        return sol, fig
 
 if __name__ == '__main__':
-    main()
+    sol, fig = main()
