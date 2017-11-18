@@ -284,7 +284,7 @@ def main(tmax=120, isothermal=True):
     t = thr / 24.
 
     fig = plt.figure(figsize=(15,9))
-    #plt.suptitle('Fermentation in a Batch Reactor')
+    plt.suptitle('Temperature = %.1f degC' %(T0 - 273.15))
     gs = GridSpec(3, 3)
     ax1 = fig.add_subplot(gs[0, 0])
     ax2 = fig.add_subplot(gs[0, 1])
