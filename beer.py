@@ -76,6 +76,32 @@ Kp_M0 = np.exp(55.61)
 # [mol / m^3]
 K_X = 3.65E5
 
+# CO2 mass transfer coefficient
+# [1 / hr]
+K_GL = 0.07
+
+
+# NOTE: All following constants are estimated for 10.5 deg C
+
+
+# amino acide 
+
+#yield coefficient
+# Yij = [mol j / mol i]
+Y_LX = 0.07734
+Y_IX = 0.02172
+Y_VX = 0.02045
+
+# Michaelis-Menten constant
+# [mol / m^3]
+K_L = 0.5905
+K_I = 0.07191
+K_V = 0.02769
+
+# first-order delay time constant
+# [1]
+tau_d = 23.54
+
 """
     Initial conditions
 """
@@ -86,17 +112,38 @@ X0 = 125.
 G0 = 70.
 M0 = 220.
 N0 = 40.
+CL0 = 0.
+CG0 = 0.
+L0 = 1.25
+I0 = 0.6
+V0 = 1.0
 
 # temperature
 # [K]
 T0 = 10.5 + 273.15
-#T0 = 8 + 273.15
+
+"""
+    Useful functions
+"""
 
 def arrhenius(prek, ea, temp):
     return prek * np.exp(-ea / (1.987E-3 * temp))
 
-def func(x, t):
-    E, X, G, M, N, T = x
+def abv(e):
+    return (100 * e * 46.068) / 789E3
+
+"""
+    ODE setup
+"""
+
+def func(x, t, isothermal=True):
+    E, X, G, M, N, CL, CG, L, I, V, T = x
+
+    # CO2 saturation concentrations
+    # polynomial fit of CO2 solubility data as f(T) [R2 = 0.9955]
+    # https://www.engineeringtoolbox.com/gases-solubility-water-d_1148.html
+    # [mol / m^3]
+    C_sat = np.poly1d([0.0194, -12.829, 2135.8])(T)
 
     # Michaelis-Menten constants
     # p: inhibition constants
@@ -122,48 +169,87 @@ def func(x, t):
     mu_2 = ((mu_M * M) / (K_M + M)) * gluc_in
     mu_3 = ((mu_N * N) / (K_N + N)) * gluc_in * (Kp_M / (Kp_M + M))
 
+    # amino acid delay time
+    D = 1 - np.exp(-t / tau_d)
+
     # ODEs
-    #dE = Y_EG * (G0 - G) + Y_EM * (M0 - M) + Y_EN * (N0 - N)
+    
+    # sugars
     dG = -mu_1 * X
     dM = -mu_2 * X
     dN = -mu_3 * X
+    
+    # ethanol
     dE = -(Y_EG * dG + Y_EM * dM + Y_EN * dN)
+    
+    # yeast
     dX = -(Y_XG * dG + Y_XM * dM + Y_XN * dN) * (K_X / (K_X + (X - X0)**2))
-    dT = (1 / (rho * Cp)) * ((H_FG * dG + H_FM * dM + H_FN * dN) - u * (T - Tc))
+    
+    # amino acids
+    dL = -Y_LX * dX * (L / (K_L + L)) * D
+    dI = -Y_IX * dX * (I / (K_I + I)) * D
+    dV = -Y_VX * dX * (V / (K_V + V)) * D
 
-    return [dE, dX, dG, dM, dN, dT]
+    # aqueous CO2
+    if CL >= C_sat:
+        dCL = 0
+    else:
+        dCL = K_GL * (C_sat - CL)
 
-t = np.linspace(0, 800)
-inits = [E0, X0, G0, M0, N0, T0]
-sol = odeint(func, inits, t)
+    # gas CO2
+    dCG = X * (Y_CG * mu_1 + Y_CM * mu_2 + Y_CN * mu_3) - dCL
 
-def abv(e):
-    return (100 * e * 46.068) / 789E3
+    # in case isothermal is selected
+    if isothermal:
+        dT = 0
+    else:
+        dT = (1 / (rho * Cp)) * ((H_FG * dG + H_FM * dM + H_FN * dN) - u * (T - Tc))
 
-fig = plt.figure(figsize=(15,9))
-plt.suptitle('Fermentation in a Batch Reactor')
-gs = GridSpec(2, 2)
-ax1 = fig.add_subplot(gs[0, 0])
-ax2 = fig.add_subplot(gs[0, 1])
-ax3 = fig.add_subplot(gs[1, 0])
-ax4 = fig.add_subplot(gs[1, 1])
+    return [dE, dX, dG, dM, dN, dCL, dCG, dL, dI, dV, dT]
 
-ax1.plot(t, sol[:, 1], color='black')
-ax1.set_title('Yeast')
-ax1.set_ylabel('Concentration [mol / m^3]')
+"""
+    Solution and data vis
+"""
 
-ax2.plot(t, sol[:, -1] - 273.15, color='r')
-ax2.set_title('Temperature')
-ax2.set_ylabel('deg C')
+def main(tmax=120, isothermal=True):
+    t = np.linspace(0, tmax)
+    inits = [E0, X0, G0, M0, N0, CL0, CG0, L0, I0, V0, T0]
+    sol = odeint(func, inits, t, args=(isothermal,))
 
-ax3.plot(t, sol[:, 2:-1])
-ax3.set_title('Sugars')
-ax3.legend(['Glucose', 'Maltose', 'Maltotriose'])
-ax3.set_ylabel('Concentration [mol / m^3]')
+    fig = plt.figure(figsize=(15,9))
+    plt.suptitle('Fermentation in a Batch Reactor')
+    gs = GridSpec(3, 2)
+    ax1 = fig.add_subplot(gs[0, 0])
+    ax2 = fig.add_subplot(gs[0, 1])
+    ax3 = fig.add_subplot(gs[1, 0])
+    ax4 = fig.add_subplot(gs[1, 1])
+    ax5 = fig.add_subplot(gs[2, :])
 
-ax4.plot(t, map(abv, sol[:, 0]), color='purple')
-ax4.set_title('Ethanol')
-ax4.set_ylabel('% ABV')
-ax4.set_xlabel('Time [hr]')
+    ax1.plot(t, sol[:, 5:7])
+    ax1.set_title('CO2')
+    ax1.legend(['Gas', 'Aqueous'])
+    ax1.set_ylabel('Concentration [mol / m^3]')
 
-fig.show()
+    ax2.plot(t, sol[:, -1] - 273.15, color='r')
+    ax2.set_title('Temperature')
+    ax2.set_ylabel('deg C')
+
+    ax3.plot(t, sol[:, 1:5])
+    ax3.set_title('Yeast & Sugars')
+    ax3.legend(['Yeast', 'Glucose', 'Maltose', 'Maltotriose'])
+    ax3.set_ylabel('Concentration [mol / m^3]')
+    
+    ax4.plot(t, sol[:, 7:10])
+    ax4.set_title('Amino Acids')
+    ax4.legend(['Leucine', 'Isoleucine', 'Valine'])
+    ax3.set_ylabel('Concentration [mol / m^3]')
+
+    ax5.plot(t, map(abv, sol[:, 0]), color='purple')
+    ax5.set_title('Ethanol')
+    ax5.set_ylabel('% ABV')
+    ax5.set_xlabel('Time [hr]')
+
+    fig.show()
+
+if __name__ == '__main__':
+    main()
