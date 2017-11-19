@@ -304,7 +304,7 @@ def main(tmax=120, isothermal=True):
 
     ax3.plot(t, sol[:, 2:5])
     ax3.set_title('Sugars')
-    ax3.legend(['Yeast', 'Glucose', 'Maltose', 'Maltotriose'])
+    ax3.legend(['Glucose', 'Maltose', 'Maltotriose'])
     ax3.set_xlabel('Time (day)')
     ax3.set_ylabel('Concentration [mol / m^3]')
     
@@ -327,7 +327,7 @@ def main(tmax=120, isothermal=True):
     ax6.set_ylabel('Concentration [mol / m^3]')
 
     ax7.plot(t, sol[:, 17], color='black')
-    ax7.set_title('Vicinal Diketones (VDKs)')
+    ax7.set_title('Vicinal Diketones')
     ax7.set_xlabel('Time (day)')
     ax7.set_ylabel('Concentration [mol / m^3]')
     
@@ -349,3 +349,6 @@ def main(tmax=120, isothermal=True):
 
 if __name__ == '__main__':
     sol, figs = main()
+    
+    for f in figs.values():
+        f[1].savefig(path+'Figures\\'+f[2].get_title().replace(' ', '') + '_BR.png', dpi=300)
