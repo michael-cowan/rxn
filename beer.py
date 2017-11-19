@@ -1,6 +1,8 @@
 import numpy as np
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set(style='ticks')
 
 path = "C:\Users\mcowa\Documents\_Pitt\Fall17\RxnProcesses\Project\Paper\\"
 params = ['E',
@@ -296,6 +298,9 @@ def main(tmax=120, isothermal=True):
     inits = [E0, X0, G0, M0, N0, CL0, CG0, L0, I0, V0, IB0, IA0, MB0, P0, EA0, EC0, IAc0, VDK0, AAI0, T0]
     sol = odeint(func, inits, thr, args=(isothermal,))
     
+    # convert temp to degC
+    sol[:, -1] -= 273.15
+    
     t = thr / 24.
 
     fig1, ax1 = plt.subplots()
@@ -354,7 +359,7 @@ def main(tmax=120, isothermal=True):
     ax8.set_xlabel('Time (day)')
     ax8.set_ylabel('Concentration [mol / m^3]')
     
-    ax9.plot(t, sol[:, -1] - 273.15, color='g')
+    ax9.plot(t, sol[:, -1], color='g')
     ax9.set_title('Temperature')
     ax9.set_xlabel('Time (day)')
     ax9.set_ylabel('Concentration [mol / m^3]')
@@ -376,6 +381,11 @@ def main(tmax=120, isothermal=True):
           (figf, axf)
           ]
     
+    for f in fa:
+        f[1].set_facecolor('none')
+        #f[0].set_edgecolor('none')
+    
+    
     return sol, {n: (i[1].get_title(), i[0], i[1]) for n,i in enumerate(fa)}
 
 if __name__ == '__main__':
@@ -383,4 +393,4 @@ if __name__ == '__main__':
     plt.close('all')
     if 1:
         for f in figs.values():
-            f[1].savefig(path+'Figures\\'+f[2].get_title().replace(' ', '') + '_BR.png', dpi=300)
+            f[1].savefig(path + 'Figures\\' + f[2].get_title().replace(' ', '') + '_BR.png', dpi=300)
