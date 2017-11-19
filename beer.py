@@ -2,6 +2,8 @@ import numpy as np
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
 
+path = "C:\Users\mcowa\Documents\_Pitt\Fall17\RxnProcesses\Project\Paper\\"
+
 """
     Constants
 """
