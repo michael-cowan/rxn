@@ -349,6 +349,6 @@ def main(tmax=120, isothermal=True):
 
 if __name__ == '__main__':
     sol, figs = main()
-    
-    for f in figs.values():
-        f[1].savefig(path+'Figures\\'+f[2].get_title().replace(' ', '') + '_BR.png', dpi=300)
+    if 0:
+        for f in figs.values():
+            f[1].savefig(path+'Figures\\'+f[2].get_title().replace(' ', '') + '_BR.png', dpi=300)
