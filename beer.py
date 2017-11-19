@@ -298,7 +298,7 @@ def main(tmax=120, isothermal=True):
 
     ax1.plot(t, sol[:, 5:7])
     ax1.set_title('CO2')
-    ax1.legend(['Gas', 'Aqueous'])
+    ax1.legend(['Aqueous', 'Gas'])
     ax1.set_xlabel('Time (day)')
     ax1.set_ylabel('Concentration [mol / m^3]')
 
