@@ -263,10 +263,7 @@ def func(x, t, isothermal=False):
 
     # temperature
     # in case isothermal is selected
-    if isothermal:
-        dT = 0
-    else:
-        dT = (1 / (rho * Cp)) * ((H_FG * dG + H_FM * dM + H_FN * dN) - u * (T - Tc))
+    dT = bool(not isothermal) * ((1 / (rho * Cp)) * ((H_FG * dG + H_FM * dM + H_FN * dN) - u * (T - Tc)))
 
     return [dE, dX, dG, dM, dN, dCL, dCG, dL, dI, dV, dIB, dIA, dMB, dP, dEA, dEC, dIAc, dVDK, dAAI, dT]
 
