@@ -186,8 +186,8 @@ AAI0 = 0.
 
 # temperature
 # [K]
-#T0 = 10.5 + 273.15
-T0 = 20. + 273.15
+T0 = 10.5 + 273.15
+#T0 = 20. + 273.15
 
 """
     Useful functions
@@ -209,29 +209,30 @@ def func(x, t, isothermal=False):
     # Michaelis-Menten constants
     # p: inhibition constants
     # [mol / m^3]
-    K_G = arrhenius(K_G0, Ea_K_G, T)
-    Kp_G = arrhenius(Kp_G0, Ea_Kp_G, T)
-    K_M = arrhenius(K_M0, Ea_K_M, T)
-    Kp_M = arrhenius(Kp_M0, Ea_Kp_M, T)
-    K_N = arrhenius(K_N0, Ea_K_N, T)
+    K_G = 0.7464#arrhenius(K_G0, Ea_K_G, T)
+    Kp_G = 5.356#arrhenius(Kp_G0, Ea_Kp_G, T)
+    K_M = 40.97#arrhenius(K_M0, Ea_K_M, T)
+    Kp_M = 13.17#arrhenius(Kp_M0, Ea_Kp_M, T)
+    K_N = 250.#arrhenius(K_N0, Ea_K_N, T)
 
     # max velocity of formation
     # [1 / hr]
-    mu_G = arrhenius(mu_G0, Ea_mu_G, T)
-    mu_M = arrhenius(mu_M0, Ea_mu_M, T)
-    mu_N = arrhenius(mu_N0, Ea_mu_N, T)
+    mu_G = 0.01348#arrhenius(mu_G0, Ea_mu_G, T)
+    mu_M = 0.02581#arrhenius(mu_M0, Ea_mu_M, T)
+    mu_N = 0.09881#arrhenius(mu_N0, Ea_mu_N, T)
 
-    # glucose inhibition rate
+    # inhibition rates
     gluc_in = Kp_G / (Kp_G + G)
+    malt_in = Kp_M / (Kp_M + M)
 
     # specific sugar uptake rates
     # [1 / hr]
     mu_1 = (mu_G * G) / (K_G + G)
     mu_2 = ((mu_M * M) / (K_M + M)) * gluc_in
-    mu_3 = ((mu_N * N) / (K_N + N)) * gluc_in * (Kp_M / (Kp_M + M))
+    mu_3 = ((mu_N * N) / (K_N + N)) * gluc_in * malt_in
 
     # feedback inhibition mechanism for cell growth
-    mu_x = (Y_XG * mu_1 + Y_XM * mu_2 + Y_XN * mu_3) * (K_X / (K_X + (X - X0)**2))
+    mu_x = ((Y_XG * mu_1) + (Y_XM * mu_2) + (Y_XN * mu_3)) * (K_X / (K_X + (X - X0)**2))
 
     # CO2 saturation concentrations
     # polynomial fit of CO2 solubility data as f(T) [R2 = 0.9955]
@@ -293,7 +294,7 @@ def func(x, t, isothermal=False):
     Solution and data vis
 """
 
-def main(tmax=120, isothermal=True):
+def main(tmax=168, isothermal=True):
     thr = np.linspace(0, tmax)
     inits = [E0, X0, G0, M0, N0, CL0, CG0, L0, I0, V0, IB0, IA0, MB0, P0, EA0, EC0, IAc0, VDK0, AAI0, T0]
     sol = odeint(func, inits, thr, args=(isothermal,))
@@ -383,14 +384,13 @@ def main(tmax=120, isothermal=True):
     
     for f in fa:
         f[1].set_facecolor('none')
-        #f[0].set_edgecolor('none')
-    
-    
+
     return sol, {n: (i[1].get_title(), i[0], i[1]) for n,i in enumerate(fa)}
 
 if __name__ == '__main__':
-    sol, figs = main(120, True)
+    sol, figs = main(168, True)
     plt.close('all')
+    figs[2][1].show()
     if 1:
         for f in figs.values():
             f[1].savefig(path + 'Figures\\' + f[2].get_title().replace(' ', '') + '_BR.png', dpi=300)
