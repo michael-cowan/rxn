@@ -3,7 +3,27 @@ from scipy.integrate import odeint
 import matplotlib.pyplot as plt
 
 path = "C:\Users\mcowa\Documents\_Pitt\Fall17\RxnProcesses\Project\Paper\\"
-
+params = ['E',
+          'X',
+          'G',
+          'M',
+          'N',
+          'CL',
+          'CG',
+          'L',
+          'I',
+          'V',
+          'IB',
+          'IA',
+          'MB',
+          'P',
+          'EA',
+          'EC',
+          'IAc',
+          'VDK',
+          'AAI',
+          'T'
+          ]
 """
     Constants
 """
@@ -286,6 +306,7 @@ def main(tmax=120, isothermal=True):
     fig6, ax6 = plt.subplots()
     fig7, ax7 = plt.subplots()
     fig8, ax8 = plt.subplots()
+    fig9, ax9 = plt.subplots()
     figf, axf = plt.subplots()
 
     ax1.plot(t, sol[:, 5:7])
@@ -294,7 +315,7 @@ def main(tmax=120, isothermal=True):
     ax1.set_xlabel('Time (day)')
     ax1.set_ylabel('Concentration [mol / m^3]')
 
-    ax2.plot(t, sol[:, 1] - 273.15, color='r')
+    ax2.plot(t, sol[:, 1], color='r')
     ax2.set_title('Yeast')
     ax2.set_xlabel('Time (day)')
     ax2.set_ylabel('Concentration [mol / m^3]')
@@ -332,20 +353,34 @@ def main(tmax=120, isothermal=True):
     ax8.set_title('Acetaldehyde')
     ax8.set_xlabel('Time (day)')
     ax8.set_ylabel('Concentration [mol / m^3]')
+    
+    ax9.plot(t, sol[:, -1] - 273.15, color='g')
+    ax9.set_title('Temperature')
+    ax9.set_xlabel('Time (day)')
+    ax9.set_ylabel('Concentration [mol / m^3]')
 
     axf.plot(t, map(abv, sol[:, 0]), color='m')
     axf.set_title('Ethanol')
     axf.set_xlabel('Time (day)')
     axf.set_ylabel('% ABV')
     
-    fa = [(fig1, ax1), (fig2, ax2), (fig3, ax3), (fig4, ax4), (fig5, ax5), (fig6, ax6), (fig7, ax7), (fig8, ax8), (figf, axf)]
+    fa = [(fig1, ax1),
+          (fig2, ax2),
+          (fig3, ax3),
+          (fig4, ax4),
+          (fig5, ax5),
+          (fig6, ax6),
+          (fig7, ax7),
+          (fig8, ax8),
+          (fig9, ax9),
+          (figf, axf)
+          ]
     
     return sol, {n: (i[1].get_title(), i[0], i[1]) for n,i in enumerate(fa)}
 
-
-
 if __name__ == '__main__':
-    sol, figs = main()
-    if 0:
+    sol, figs = main(120, True)
+    plt.close('all')
+    if 1:
         for f in figs.values():
             f[1].savefig(path+'Figures\\'+f[2].get_title().replace(' ', '') + '_BR.png', dpi=300)
