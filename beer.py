@@ -1,6 +1,5 @@
 import numpy as np
 from scipy.integrate import odeint
-from matplotlib.gridspec import GridSpec
 import matplotlib.pyplot as plt
 
 """
@@ -233,10 +232,7 @@ def func(x, t, isothermal=False):
     dX = mu_x * X
 
     # aqueous CO2
-    if CL >= C_sat:
-        dCL = 0
-    else:
-        dCL = K_GL * (C_sat - CL)
+    dCL = K_GL * (C_sat - CL) * bool(CL <= C_sat)
 
     # gas CO2
     dCG = X * (Y_CG * mu_1 + Y_CM * mu_2 + Y_CN * mu_3) - dCL
@@ -283,18 +279,15 @@ def main(tmax=120, isothermal=True):
     
     t = thr / 24.
 
-    fig = plt.figure(figsize=(15,9))
-    plt.suptitle('Temperature = %.1f degC' %(T0 - 273.15))
-    gs = GridSpec(3, 3)
-    ax1 = fig.add_subplot(gs[0, 0])
-    ax2 = fig.add_subplot(gs[0, 1])
-    ax3 = fig.add_subplot(gs[0, 2])
-    ax4 = fig.add_subplot(gs[1, 0])
-    ax5 = fig.add_subplot(gs[1, 1])
-    ax6 = fig.add_subplot(gs[1, 2])
-    ax7 = fig.add_subplot(gs[2, 0])
-    ax8 = fig.add_subplot(gs[2, 1])
-    axf = fig.add_subplot(gs[2, 2])
+    fig1, ax1 = plt.subplots()
+    fig2, ax2 = plt.subplots()
+    fig3, ax3 = plt.subplots()
+    fig4, ax4 = plt.subplots()
+    fig5, ax5 = plt.subplots()
+    fig6, ax6 = plt.subplots()
+    fig7, ax7 = plt.subplots()
+    fig8, ax8 = plt.subplots()
+    figf, axf = plt.subplots()
 
     ax1.plot(t, sol[:, 5:7])
     ax1.set_title('CO2')
@@ -345,11 +338,12 @@ def main(tmax=120, isothermal=True):
     axf.set_title('Ethanol')
     axf.set_xlabel('Time (day)')
     axf.set_ylabel('% ABV')
+    
+    fa = [(fig1, ax1), (fig2, ax2), (fig3, ax3), (fig4, ax4), (fig5, ax5), (fig6, ax6), (fig7, ax7), (fig8, ax8), (figf, axf)]
+    
+    return sol, {n: (i[1].get_title(), i[0], i[1]) for n,i in enumerate(fa)}
 
-    fig.tight_layout(rect=[0, 0, 1, 0.95])
-    fig.show()
-    if __name__ == '__main__':
-        return sol, fig
+
 
 if __name__ == '__main__':
-    sol, fig = main()
+    sol, figs = main()
