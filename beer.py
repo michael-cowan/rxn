@@ -199,6 +199,19 @@ def arrhenius(prek, ea, temp):
 def abv(e):
     return (100 * e * 46.068) / 789E3
 
+def dim(rad, vol=0.23, days=7, r=False):
+    flow = vol / (days*24.)
+    area = np.pi * rad**2
+    vel = flow / area
+    length = vol / area
+    print 'Volumetric Flowrate:\n  %.3e m^3/hr' % flow
+    print 'Area:\n  %.3e m^2' % area
+    print 'Fluid Velocity:\n  %.3e m/s' % vel
+    print '  %.3e mph' %(vel*2.23694)
+    print 'Length:\n  %.3f m' % length
+    if r:
+        return {'VolFlowrate': flow, 'Velocity': vel, 'Area': area, 'Length': length}
+
 """
     ODE setup
 """
@@ -390,7 +403,7 @@ def main(tmax=168, isothermal=True):
 if __name__ == '__main__':
     sol, figs = main(168, True)
     plt.close('all')
-    figs[2][1].show()
-    if 1:
+    #figs[2][1].show()
+    if 0:
         for f in figs.values():
             f[1].savefig(path + 'Figures\\' + f[2].get_title().replace(' ', '') + '_BR.png', dpi=300)
