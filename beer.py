@@ -196,18 +196,20 @@ T0 = 10.5 + 273.15
 def arrhenius(prek, ea, temp):
     return prek * np.exp(-ea / (1.987E-3 * temp))
 
+lhc_length = 27358.8
+
 def abv(e):
     return (100 * e * 46.068) / 789E3
 
 def dim(rad, vol=0.23, days=7, r=False):
     flow = vol / (days*24.)
     area = np.pi * rad**2
-    vel = flow / area
+    vel = flow / (1000. * area)
     length = vol / area
     print 'Volumetric Flowrate:\n  %.3e m^3/hr' % flow
     print 'Area:\n  %.3e m^2' % area
-    print 'Fluid Velocity:\n  %.3e m/s' % vel
-    print '  %.3e mph' %(vel*2.23694)
+    print 'Fluid Velocity:\n  %.3e km/hr' % vel
+    print '  %.3e mph' %(vel * 0.621371)
     print 'Length:\n  %.3f m' % length
     if r:
         return {'VolFlowrate': flow, 'Velocity': vel, 'Area': area, 'Length': length}
@@ -315,7 +317,7 @@ def main(tmax=168, isothermal=True):
     # convert temp to degC
     sol[:, -1] -= 273.15
     
-    t = thr / 24.
+    t = thr / float(tmax)
 
     fig1, ax1 = plt.subplots()
     fig2, ax2 = plt.subplots()
@@ -331,56 +333,56 @@ def main(tmax=168, isothermal=True):
     ax1.plot(t, sol[:, 5:7])
     ax1.set_title('CO2')
     ax1.legend(['Aqueous', 'Gas'])
-    ax1.set_xlabel('Time (day)')
+    ax1.set_xlabel('Normalized PFR Length')
     ax1.set_ylabel('Concentration [mol / m^3]')
 
     ax2.plot(t, sol[:, 1], color='r')
     ax2.set_title('Yeast')
-    ax2.set_xlabel('Time (day)')
+    ax2.set_xlabel('Normalized PFR Length')
     ax2.set_ylabel('Concentration [mol / m^3]')
 
     ax3.plot(t, sol[:, 2:5])
     ax3.set_title('Sugars')
     ax3.legend(['Glucose', 'Maltose', 'Maltotriose'])
-    ax3.set_xlabel('Time (day)')
+    ax3.set_xlabel('Normalized PFR Length')
     ax3.set_ylabel('Concentration [mol / m^3]')
     
     ax4.plot(t, sol[:, 7:10])
     ax4.set_title('Amino Acids')
     ax4.legend(['Leucine', 'Isoleucine', 'Valine'])
-    ax4.set_xlabel('Time (day)')
+    ax4.set_xlabel('Normalized PFR Length')
     ax4.set_ylabel('Concentration [mol / m^3]')
 
     ax5.plot(t, sol[:, 10:14])
     ax5.set_title('Fusel Alcohols')
     ax5.legend(['Isobutyl Alcohol', 'Isoamyl Alcohol', '2-methyl-1-butanol', 'n-propanol'])
-    ax5.set_xlabel('Time (day)')
+    ax5.set_xlabel('Normalized PFR Length')
     ax5.set_ylabel('Concentration [mol / m^3')
     
     ax6.plot(t, sol[:, 14:17])
     ax6.set_title('Esters')
     ax6.legend(['Ethyl Acetate', 'Ethyl Caproate', 'Isoamyl Acetate'])
-    ax6.set_xlabel('Time (day)')
+    ax6.set_xlabel('Normalized PFR Length')
     ax6.set_ylabel('Concentration [mol / m^3]')
 
     ax7.plot(t, sol[:, 17], color='black')
     ax7.set_title('Vicinal Diketones')
-    ax7.set_xlabel('Time (day)')
+    ax7.set_xlabel('Normalized PFR Length')
     ax7.set_ylabel('Concentration [mol / m^3]')
     
     ax8.plot(t, sol[:, 18], color='c')
     ax8.set_title('Acetaldehyde')
-    ax8.set_xlabel('Time (day)')
+    ax8.set_xlabel('Normalized PFR Length')
     ax8.set_ylabel('Concentration [mol / m^3]')
     
     ax9.plot(t, sol[:, -1], color='g')
     ax9.set_title('Temperature')
-    ax9.set_xlabel('Time (day)')
+    ax9.set_xlabel('Normalized PFR Length')
     ax9.set_ylabel('Concentration [mol / m^3]')
 
     axf.plot(t, map(abv, sol[:, 0]), color='m')
     axf.set_title('Ethanol')
-    axf.set_xlabel('Time (day)')
+    axf.set_xlabel('Normalized PFR Length')
     axf.set_ylabel('% ABV')
     
     fa = [(fig1, ax1),
@@ -406,4 +408,4 @@ if __name__ == '__main__':
     #figs[2][1].show()
     if 0:
         for f in figs.values():
-            f[1].savefig(path + 'Figures\\' + f[2].get_title().replace(' ', '') + '_BR.png', dpi=300)
+            f[1].savefig(path + 'Figures\\' + f[2].get_title().replace(' ', '') + '_PFR.png', dpi=300)
