@@ -198,8 +198,9 @@ def arrhenius(prek, ea, temp):
 
 lhc_length = 27358.8
 
-def abv(e):
-    return (100 * e * 46.068) / 789E3
+def abv(e, vdot=1, conc=False):
+    vdot = 1 if conc else vdot
+    return (100 * e * 46.068) / (789E3 * (vdot * bool(conc)))
 
 def dim(rad, vol=0.23, days=7, r=False):
     flow = vol / (days*24.)
@@ -218,9 +219,11 @@ def dim(rad, vol=0.23, days=7, r=False):
     ODE setup
 """
 
-def func(x, t, isothermal=False):
-    E, X, G, M, N, CL, CG, L, I, V, IB, IA, MB, P, EA, EC, IAc, VDK, AAI, T = x
+def func(x, t, vdot=1., isothermal=False):
+    E, X, G, M, N, CL, CG, L, I, V, IB, IA, MB, P, EA, EC, IAc, VDK, AAI = x[:-1]
+    T = x[-1]
 
+    
     # Michaelis-Menten constants
     # p: inhibition constants
     # [mol / m^3]
@@ -309,15 +312,23 @@ def func(x, t, isothermal=False):
     Solution and data vis
 """
 
-def main(tmax=168, isothermal=True):
+def main(vdot=1., tmax=168, save=False, concentration=False, normalize=False, isothermal=True):
     thr = np.linspace(0, tmax)
-    inits = [E0, X0, G0, M0, N0, CL0, CG0, L0, I0, V0, IB0, IA0, MB0, P0, EA0, EC0, IAc0, VDK0, AAI0, T0]
-    sol = odeint(func, inits, thr, args=(isothermal,))
+
+    init_conc = [E0, X0, G0, M0, N0, CL0, CG0, L0, I0, V0, IB0, IA0, MB0, P0, EA0, EC0, IAc0, VDK0, AAI0]
+    if 0:#vdot > 1:
+        init_conc = map(lambda x: x * vdot, init_conc)
+    inits = init_conc + [T0]
+    
+    sol = odeint(func, inits, thr, args=(vdot, isothermal))
+    
+    if vdot != 1 and not concentration:
+        sol[:, :-1] *= vdot
     
     # convert temp to degC
     sol[:, -1] -= 273.15
     
-    t = thr / float(tmax)
+    t = thr * vdot if vdot != 1 else thr
 
     fig1, ax1 = plt.subplots()
     fig2, ax2 = plt.subplots()
@@ -330,59 +341,62 @@ def main(tmax=168, isothermal=True):
     fig9, ax9 = plt.subplots()
     figf, axf = plt.subplots()
 
+    xlabel = 'Cumulative Volume (L)' if vdot != 1 else 'Time (hr)'
+    ylabel = 'Concentration (mol / m^3)' if concentration else 'Molar Flow Rate (mol / hr)'
+    
     ax1.plot(t, sol[:, 5:7])
     ax1.set_title('CO2')
     ax1.legend(['Aqueous', 'Gas'])
-    ax1.set_xlabel('Normalized PFR Length')
-    ax1.set_ylabel('Concentration [mol / m^3]')
+    ax1.set_xlabel(xlabel)
+    ax1.set_ylabel(ylabel)
 
     ax2.plot(t, sol[:, 1], color='r')
     ax2.set_title('Yeast')
-    ax2.set_xlabel('Normalized PFR Length')
-    ax2.set_ylabel('Concentration [mol / m^3]')
+    ax2.set_xlabel(xlabel)
+    ax2.set_ylabel(ylabel)
 
     ax3.plot(t, sol[:, 2:5])
     ax3.set_title('Sugars')
     ax3.legend(['Glucose', 'Maltose', 'Maltotriose'])
-    ax3.set_xlabel('Normalized PFR Length')
-    ax3.set_ylabel('Concentration [mol / m^3]')
+    ax3.set_xlabel(xlabel)
+    ax3.set_ylabel(ylabel)
     
     ax4.plot(t, sol[:, 7:10])
     ax4.set_title('Amino Acids')
     ax4.legend(['Leucine', 'Isoleucine', 'Valine'])
-    ax4.set_xlabel('Normalized PFR Length')
-    ax4.set_ylabel('Concentration [mol / m^3]')
+    ax4.set_xlabel(xlabel)
+    ax4.set_ylabel(ylabel)
 
     ax5.plot(t, sol[:, 10:14])
     ax5.set_title('Fusel Alcohols')
     ax5.legend(['Isobutyl Alcohol', 'Isoamyl Alcohol', '2-methyl-1-butanol', 'n-propanol'])
-    ax5.set_xlabel('Normalized PFR Length')
+    ax5.set_xlabel(xlabel)
     ax5.set_ylabel('Concentration [mol / m^3')
     
     ax6.plot(t, sol[:, 14:17])
     ax6.set_title('Esters')
     ax6.legend(['Ethyl Acetate', 'Ethyl Caproate', 'Isoamyl Acetate'])
-    ax6.set_xlabel('Normalized PFR Length')
-    ax6.set_ylabel('Concentration [mol / m^3]')
+    ax6.set_xlabel(xlabel)
+    ax6.set_ylabel(ylabel)
 
     ax7.plot(t, sol[:, 17], color='black')
     ax7.set_title('Vicinal Diketones')
-    ax7.set_xlabel('Normalized PFR Length')
-    ax7.set_ylabel('Concentration [mol / m^3]')
+    ax7.set_xlabel(xlabel)
+    ax7.set_ylabel(ylabel)
     
     ax8.plot(t, sol[:, 18], color='c')
     ax8.set_title('Acetaldehyde')
-    ax8.set_xlabel('Normalized PFR Length')
-    ax8.set_ylabel('Concentration [mol / m^3]')
+    ax8.set_xlabel(xlabel)
+    ax8.set_ylabel(ylabel)
     
     ax9.plot(t, sol[:, -1], color='g')
     ax9.set_title('Temperature')
-    ax9.set_xlabel('Normalized PFR Length')
-    ax9.set_ylabel('Concentration [mol / m^3]')
+    ax9.set_xlabel(xlabel)
+    ax9.set_ylabel(ylabel)
 
-    axf.plot(t, map(abv, sol[:, 0]), color='m')
+    axf.plot(t, [abv(i, vdot, concentration) for i in sol[:, 0]], color='m')
     axf.set_title('Ethanol')
-    axf.set_xlabel('Normalized PFR Length')
+    axf.set_xlabel(xlabel)
     axf.set_ylabel('% ABV')
     
     fa = [(fig1, ax1),
@@ -400,12 +414,25 @@ def main(tmax=168, isothermal=True):
     for f in fa:
         f[1].set_facecolor('none')
 
-    return sol, {n: (i[1].get_title(), i[0], i[1]) for n,i in enumerate(fa)}
+    figs = {n: (i[1].get_title(), i[0], i[1]) for n,i in enumerate(fa)}
+
+    if save:
+        name = path + 'Figures\\'
+        name += '{}_PFR.png' if vdot != 1 else '{}.png'
+        for f in figs.values():
+            f[1].savefig(name.format(f[2].get_title().replace(' ', '')), dpi=300)
+
+    plt.close('all')
+    return sol, figs
 
 if __name__ == '__main__':
-    sol, figs = main(168, True)
-    plt.close('all')
-    #figs[2][1].show()
-    if 0:
-        for f in figs.values():
-            f[1].savefig(path + 'Figures\\' + f[2].get_title().replace(' ', '') + '_PFR.png', dpi=300)
+    # volumetric flow rates
+    # [m^3 / hr]
+    
+    # large hadron collider PFR
+    vdot_LHC = 53.57
+    
+    # small volume PFR
+    vdot_small = 1.37E-3
+
+    sol, figs = main(vdot_LHC, concentration=True)
