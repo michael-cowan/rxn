@@ -215,6 +215,9 @@ def dim(rad, vol=0.23, days=7, r=False):
     if r:
         return {'VolFlowrate': flow, 'Velocity': vel, 'Area': area, 'Length': length}
 
+def pressure(conc, temp):
+    return conc * 8.2057E-5 * temp
+
 """
     ODE setup
 """
@@ -322,6 +325,9 @@ def main(vdot=1., tmax=168, save=False, concentration=False, normalize=False, is
     
     sol = odeint(func, inits, thr, args=(vdot, isothermal))
     
+    # calc pressure from CO2_g production
+    p_f = pressure(sol[-1, 6].max(), sol[-1, -1])
+
     if vdot != 1 and not concentration:
         sol[:, :-1] *= vdot
     
@@ -423,7 +429,7 @@ def main(vdot=1., tmax=168, save=False, concentration=False, normalize=False, is
             f[1].savefig(name.format(f[2].get_title().replace(' ', '')), dpi=300)
 
     plt.close('all')
-    return sol, figs
+    return sol, figs, p_f
 
 if __name__ == '__main__':
     # volumetric flow rates
@@ -435,4 +441,4 @@ if __name__ == '__main__':
     # small volume PFR
     vdot_small = 1.37E-3
 
-    sol, figs = main(vdot_LHC, concentration=True)
+    sol, figs, p_f = main(vdot_LHC, concentration=True)
