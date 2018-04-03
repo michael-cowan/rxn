@@ -107,7 +107,7 @@ K_GL = 0.07
 # NOTE: All following constants are estimated for 10.5 deg C
 
 
-# amino acide 
+# amino acids
 
 # yield coefficient
 # Yij = [mol j / mol i]
@@ -187,20 +187,23 @@ AAI0 = 0.
 # temperature
 # [K]
 T0 = 10.5 + 273.15
-#T0 = 20. + 273.15
+# T0 = 20. + 273.15
 
 """
     Useful functions
 """
+
 
 def arrhenius(prek, ea, temp):
     return prek * np.exp(-ea / (1.987E-3 * temp))
 
 lhc_length = 27358.8
 
+
 def abv(e, vdot=1, conc=False):
     vdot = 1 if conc else vdot
     return (100 * e * 46.068) / (789E3 * (vdot * bool(conc)))
+
 
 def dim(rad, vol=0.23, days=7, r=False):
     flow = vol / (days*24.)
@@ -210,10 +213,12 @@ def dim(rad, vol=0.23, days=7, r=False):
     print 'Volumetric Flowrate:\n  %.3e m^3/hr' % flow
     print 'Area:\n  %.3e m^2' % area
     print 'Fluid Velocity:\n  %.3e km/hr' % vel
-    print '  %.3e mph' %(vel * 0.621371)
+    print '  %.3e mph' % (vel * 0.621371)
     print 'Length:\n  %.3f m' % length
     if r:
-        return {'VolFlowrate': flow, 'Velocity': vel, 'Area': area, 'Length': length}
+        return {'VolFlowrate': flow, 'Velocity': vel,
+                'Area': area, 'Length': length}
+
 
 def pressure(conc, temp):
     return conc * 8.2057E-5 * temp
@@ -222,25 +227,24 @@ def pressure(conc, temp):
     ODE setup
 """
 
-def func(x, t, vdot=1., isothermal=False):
-    E, X, G, M, N, CL, CG, L, I, V, IB, IA, MB, P, EA, EC, IAc, VDK, AAI = x[:-1]
-    T = x[-1]
 
-    
+def func(x, t, vdot=1., isothermal=False):
+    E, X, G, M, N, CL, CG, L, I, V, IB, IA, MB, P, EA, EC, IAc, VDK, AAI, T = x
+
     # Michaelis-Menten constants
     # p: inhibition constants
     # [mol / m^3]
-    K_G = 0.7464#arrhenius(K_G0, Ea_K_G, T)
-    Kp_G = 5.356#arrhenius(Kp_G0, Ea_Kp_G, T)
-    K_M = 40.97#arrhenius(K_M0, Ea_K_M, T)
-    Kp_M = 13.17#arrhenius(Kp_M0, Ea_Kp_M, T)
-    K_N = 250.#arrhenius(K_N0, Ea_K_N, T)
+    K_G = 0.7464  # arrhenius(K_G0, Ea_K_G, T)
+    Kp_G = 5.356  # arrhenius(Kp_G0, Ea_Kp_G, T)
+    K_M = 40.97  # arrhenius(K_M0, Ea_K_M, T)
+    Kp_M = 13.17  # arrhenius(Kp_M0, Ea_Kp_M, T)
+    K_N = 250.  # arrhenius(K_N0, Ea_K_N, T)
 
     # max velocity of formation
     # [1 / hr]
-    mu_G = 0.01348#arrhenius(mu_G0, Ea_mu_G, T)
-    mu_M = 0.02581#arrhenius(mu_M0, Ea_mu_M, T)
-    mu_N = 0.09881#arrhenius(mu_N0, Ea_mu_N, T)
+    mu_G = 0.01348  # arrhenius(mu_G0, Ea_mu_G, T)
+    mu_M = 0.02581  # arrhenius(mu_M0, Ea_mu_M, T)
+    mu_N = 0.09881  # arrhenius(mu_N0, Ea_mu_N, T)
 
     # inhibition rates
     gluc_in = Kp_G / (Kp_G + G)
@@ -253,7 +257,8 @@ def func(x, t, vdot=1., isothermal=False):
     mu_3 = ((mu_N * N) / (K_N + N)) * gluc_in * malt_in
 
     # feedback inhibition mechanism for cell growth
-    mu_x = ((Y_XG * mu_1) + (Y_XM * mu_2) + (Y_XN * mu_3)) * (K_X / (K_X + (X - X0)**2))
+    mu_x = ((Y_XG * mu_1) + (Y_XM * mu_2) +
+            (Y_XN * mu_3)) * (K_X / (K_X + (X - X0)**2))
 
     # CO2 saturation concentrations
     # polynomial fit of CO2 solubility data as f(T) [R2 = 0.9955]
@@ -265,15 +270,15 @@ def func(x, t, vdot=1., isothermal=False):
     D = 1 - np.exp(-t / tau_d)
 
     # ODEs
-    
+
     # sugars
     dG = -mu_1 * X
     dM = -mu_2 * X
     dN = -mu_3 * X
-    
+
     # ethanol
     dE = -(Y_EG * dG + Y_EM * dM + Y_EN * dN)
-    
+
     # yeast
     dX = mu_x * X
 
@@ -282,7 +287,7 @@ def func(x, t, vdot=1., isothermal=False):
 
     # gas CO2
     dCG = X * (Y_CG * mu_1 + Y_CM * mu_2 + Y_CN * mu_3) - dCL
-    
+
     # amino acids
     dL = -Y_LX * dX * (L / (K_L + L)) * D
     dI = -Y_IX * dX * (I / (K_I + I)) * D
@@ -307,33 +312,45 @@ def func(x, t, vdot=1., isothermal=False):
 
     # temperature
     # in case isothermal is selected
-    dT = bool(not isothermal) * ((1 / (rho * Cp)) * ((H_FG * dG + H_FM * dM + H_FN * dN) - u * (T - Tc)))
+    dT = (1 / (rho * Cp))
+    dT *= ((H_FG * dG + H_FM * dM + H_FN * dN) - u * (T - Tc))
+    dT *= bool(not isothermal)
 
-    return [dE, dX, dG, dM, dN, dCL, dCG, dL, dI, dV, dIB, dIA, dMB, dP, dEA, dEC, dIAc, dVDK, dAAI, dT]
+    return [dE, dX, dG, dM, dN,
+            dCL, dCG, dL, dI, dV,
+            dIB, dIA, dMB, dP, dEA,
+            dEC, dIAc, dVDK, dAAI, dT
+            ]
 
 """
     Solution and data vis
 """
 
-def main(vdot=1., tmax=168, save=False, concentration=False, normalize=False, isothermal=True):
+
+def main(vdot=1., tmax=168, save=False, concentration=False,
+         normalize=False, isothermal=True):
     thr = np.linspace(0, tmax)
 
-    init_conc = [E0, X0, G0, M0, N0, CL0, CG0, L0, I0, V0, IB0, IA0, MB0, P0, EA0, EC0, IAc0, VDK0, AAI0]
-    if 0:#vdot > 1:
+    init_conc = [E0, X0, G0, M0, N0,
+                 CL0, CG0, L0, I0, V0,
+                 IB0, IA0, MB0, P0, EA0,
+                 EC0, IAc0, VDK0, AAI0
+                 ]
+    if 0:  # vdot > 1:
         init_conc = map(lambda x: x * vdot, init_conc)
     inits = init_conc + [T0]
-    
+
     sol = odeint(func, inits, thr, args=(vdot, isothermal))
-    
+
     # calc pressure from CO2_g production
     p_f = pressure(sol[-1, 6].max(), sol[-1, -1])
 
     if vdot != 1 and not concentration:
         sol[:, :-1] *= vdot
-    
+
     # convert temp to degC
     sol[:, -1] -= 273.15
-    
+
     t = thr * vdot if vdot != 1 else thr
 
     fig1, ax1 = plt.subplots()
@@ -348,8 +365,9 @@ def main(vdot=1., tmax=168, save=False, concentration=False, normalize=False, is
     figf, axf = plt.subplots()
 
     xlabel = 'Cumulative Volume (L)' if vdot != 1 else 'Time (hr)'
-    ylabel = 'Concentration (mol / m^3)' if concentration else 'Molar Flow Rate (mol / hr)'
-    
+    ylabel = 'Concentration (mol / m^3)' if concentration \
+             else 'Molar Flow Rate (mol / hr)'
+
     ax1.plot(t, sol[:, 5:7])
     ax1.set_title('CO2')
     ax1.legend(['Aqueous', 'Gas'])
@@ -366,7 +384,7 @@ def main(vdot=1., tmax=168, save=False, concentration=False, normalize=False, is
     ax3.legend(['Glucose', 'Maltose', 'Maltotriose'])
     ax3.set_xlabel(xlabel)
     ax3.set_ylabel(ylabel)
-    
+
     ax4.plot(t, sol[:, 7:10])
     ax4.set_title('Amino Acids')
     ax4.legend(['Leucine', 'Isoleucine', 'Valine'])
@@ -375,10 +393,11 @@ def main(vdot=1., tmax=168, save=False, concentration=False, normalize=False, is
 
     ax5.plot(t, sol[:, 10:14])
     ax5.set_title('Fusel Alcohols')
-    ax5.legend(['Isobutyl Alcohol', 'Isoamyl Alcohol', '2-methyl-1-butanol', 'n-propanol'])
+    ax5.legend(['Isobutyl Alcohol', 'Isoamyl Alcohol',
+                '2-methyl-1-butanol', 'n-propanol'])
     ax5.set_xlabel(xlabel)
     ax5.set_ylabel('Concentration [mol / m^3')
-    
+
     ax6.plot(t, sol[:, 14:17])
     ax6.set_title('Esters')
     ax6.legend(['Ethyl Acetate', 'Ethyl Caproate', 'Isoamyl Acetate'])
@@ -389,12 +408,12 @@ def main(vdot=1., tmax=168, save=False, concentration=False, normalize=False, is
     ax7.set_title('Vicinal Diketones')
     ax7.set_xlabel(xlabel)
     ax7.set_ylabel(ylabel)
-    
+
     ax8.plot(t, sol[:, 18], color='c')
     ax8.set_title('Acetaldehyde')
     ax8.set_xlabel(xlabel)
     ax8.set_ylabel(ylabel)
-    
+
     ax9.plot(t, sol[:, -1], color='g')
     ax9.set_title('Temperature')
     ax9.set_xlabel(xlabel)
@@ -404,7 +423,7 @@ def main(vdot=1., tmax=168, save=False, concentration=False, normalize=False, is
     axf.set_title('Ethanol')
     axf.set_xlabel(xlabel)
     axf.set_ylabel('% ABV')
-    
+
     fa = [(fig1, ax1),
           (fig2, ax2),
           (fig3, ax3),
@@ -416,17 +435,18 @@ def main(vdot=1., tmax=168, save=False, concentration=False, normalize=False, is
           (fig9, ax9),
           (figf, axf)
           ]
-    
+
     for f in fa:
         f[1].set_facecolor('none')
 
-    figs = {n: (i[1].get_title(), i[0], i[1]) for n,i in enumerate(fa)}
+    figs = {n: (i[1].get_title(), i[0], i[1]) for n, i in enumerate(fa)}
 
     if save:
         name = path + 'Figures\\'
         name += '{}_PFR.png' if vdot != 1 else '{}.png'
         for f in figs.values():
-            f[1].savefig(name.format(f[2].get_title().replace(' ', '')), dpi=300)
+            f[1].savefig(name.format(f[2].get_title().replace(' ', '')),
+                         dpi=300)
 
     plt.close('all')
     return sol, figs, p_f
@@ -434,10 +454,10 @@ def main(vdot=1., tmax=168, save=False, concentration=False, normalize=False, is
 if __name__ == '__main__':
     # volumetric flow rates
     # [m^3 / hr]
-    
+
     # large hadron collider PFR
     vdot_LHC = 53.57
-    
+
     # small volume PFR
     vdot_small = 1.37E-3
 
